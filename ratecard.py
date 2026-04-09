@@ -7,7 +7,6 @@ import urllib.parse
 # 🔒 PASSWORD
 # ==========================================
 APP_PASSWORD = "vayu@123"
-
 pwd = st.text_input("🔐 Enter Access Password", type="password")
 if pwd != APP_PASSWORD:
     st.stop()
@@ -33,11 +32,13 @@ st.set_page_config(page_title="Vayu Vega Pro", layout="wide")
 def load_data():
     if not os.path.exists("rates.xlsx"):
         return None, None
+    
     s = pd.read_excel("rates.xlsx", sheet_name="States")
     s.columns = s.columns.str.strip().str.upper()
 
     r = pd.read_excel("rates.xlsx", sheet_name="Rates", header=2)
     r.columns = r.columns.str.strip()
+
     return s, r
 
 state_df, rate_df = load_data()
@@ -57,14 +58,23 @@ if state_df is not None and rate_df is not None:
 
         service = st.selectbox("Courier", ["DTDC", "ECOM"])
 
-        # 🔥 PINCODE DROPDOWN
-        pincodes = sorted(state_df['PINCODE'].unique().tolist())
-        pincode = st.selectbox("Select Pincode", pincodes)
-
-        # 🔥 WEIGHT DROPDOWN
+        # 🔥 FILTER WEIGHT BASED ON COURIER
         clean = rate_df.dropna(subset=['Weight'])
-        weights = sorted(clean['Weight'].unique().tolist())
-        dead_weight = st.selectbox("Select Dead Weight (KG)", weights)
+        service_columns = [col for col in clean.columns if service in col]
+
+        if service_columns:
+            weights = sorted(clean['Weight'].unique().tolist())
+        else:
+            weights = []
+
+        dead_weight = st.selectbox("Select Weight (KG)", weights)
+
+        # 🔥 FILTER PINCODES BASED ON COURIER (only valid zones)
+        valid_zones = [col.split("-")[0] for col in service_columns]
+        valid_states = state_df[state_df['ZONE'].isin(valid_zones)]
+
+        pincodes = sorted(valid_states['PINCODE'].unique().tolist())
+        pincode = st.selectbox("Select Pincode", pincodes)
 
         # Dimensions
         st.markdown("### 📐 Dimensions (cm)")
@@ -82,7 +92,6 @@ if state_df is not None and rate_df is not None:
 
             # VOLUMETRIC
             volumetric_weight = (l * w * h) / 5000 if l and w and h else 0
-
             charge_weight = max(dead_weight, volumetric_weight)
 
             st.markdown("### 📊 Weight Details")
@@ -90,7 +99,7 @@ if state_df is not None and rate_df is not None:
             st.write(f"Volumetric Weight: {round(volumetric_weight,2)} KG")
             st.write(f"Chargeable Weight: {round(charge_weight,2)} KG")
 
-            # 🔥 CLOSEST WEIGHT MATCH
+            # CLOSEST WEIGHT MATCH
             selected = min(weights, key=lambda x: abs(x - charge_weight))
 
             col = f"{zone}-{service}"
@@ -102,18 +111,16 @@ if state_df is not None and rate_df is not None:
                     col
                 ].values[0]
 
-                st.markdown(f"""
-                ### 💰 Final Price: ₹{price}
-                """)
+                st.markdown(f"## 💰 Final Price: ₹{price}")
 
                 # ALERT
                 if volumetric_weight > dead_weight:
                     st.warning(
-                        f"⚠️ Volumetric ({round(volumetric_weight,2)} KG) > Dead Weight. Charges volumetric weight ప్రకారం ఉంటాయి."
+                        f"⚠️ Volumetric ({round(volumetric_weight,2)} KG) > Dead Weight → Charges volumetric weight ప్రకారం ఉంటాయి"
                     )
 
                 # NOTICE
-                st.info("📞 Courier related queries: Sai - 8885999794")
+                st.info("📞 Courier queries: Sai - 8885999794")
 
                 # WHATSAPP
                 msg = f"Pincode:{pincode}, Service:{service}, Weight:{selected}, Price:{price}"
