@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import os
+import urllib.parse
 
 # ==========================================
 # CONFIG
@@ -16,6 +17,7 @@ st.markdown("""
 .price-card {background:black;color:white;padding:25px;border-radius:15px;text-align:center;}
 .price {font-size:50px;color:#00e676;font-weight:900;}
 .alert {background:#fff3cd;padding:15px;border-radius:10px;color:#856404;margin-top:15px;border:1px solid #ffeeba;}
+.note {background:#e3f2fd;padding:15px;border-radius:10px;color:#0d47a1;margin-top:15px;border:1px solid #90caf9;}
 </style>
 """, unsafe_allow_html=True)
 
@@ -76,41 +78,35 @@ if state_df is not None and rate_df is not None:
             if not match.empty:
                 zone = str(match.iloc[0]['ZONE']).upper()
 
-                # 🔥 VOLUMETRIC FORMULA
+                # 🔥 VOLUMETRIC
                 volumetric_weight = (l * w * h) / 5000 if l and w and h else 0
 
-                # 🔥 FINAL CHARGEABLE WEIGHT
+                # 🔥 FINAL WEIGHT
                 charge_weight = max(dead_weight, volumetric_weight)
 
                 st.markdown('<div class="card">', unsafe_allow_html=True)
 
-                st.write(f"📊 **Dead Weight:** {dead_weight} KG")
-                st.write(f"📊 **Volumetric Weight:** {round(volumetric_weight,2)} KG")
-                st.write(f"✅ **Chargeable Weight:** {round(charge_weight,2)} KG")
-
-                # ⚠️ ALERT
-                if volumetric_weight > dead_weight:
-                    st.markdown(f"""
-                    <div class="alert">
-                    ⚠️ ఈ shipment కి <b>Volumetric Weight ({round(volumetric_weight,2)} KG)</b> ఎక్కువగా ఉంది.<br>
-                    కాబట్టి charges <b>Volumetric Weight</b> ప్రకారం తీసుకుంటారు.
-                    </div>
-                    """, unsafe_allow_html=True)
+                st.write(f"📊 Dead Weight: {dead_weight} KG")
+                st.write(f"📊 Volumetric Weight: {round(volumetric_weight,2)} KG")
+                st.write(f"✅ Chargeable Weight: {round(charge_weight,2)} KG")
 
                 st.markdown('</div>', unsafe_allow_html=True)
 
                 # RATE CALC
                 clean = rate_df.dropna(subset=['Weight'])
-
                 weights = sorted(clean['Weight'].unique())
-                selected = min(weights, key=lambda x: abs(x - charge_weight))
 
+                selected = min(weights, key=lambda x: abs(x - charge_weight))
                 col = f"{zone}-{service}"
 
                 if col in clean.columns:
 
-                    price = clean.loc[clean['Weight'] == selected, col].values[0]
+                    price = clean.loc[
+                        clean['Weight'] == selected,
+                        col
+                    ].values[0]
 
+                    # 💰 PRICE DISPLAY
                     st.markdown(f"""
                     <div class="price-card">
                         <p>Final Charge</p>
@@ -119,10 +115,72 @@ if state_df is not None and rate_df is not None:
                     </div>
                     """, unsafe_allow_html=True)
 
+                    # ==========================================
+                    # 🔥 NOTIFICATIONS
+                    # ==========================================
+
+                    # ⚠️ Volumetric Alert
+                    if volumetric_weight > dead_weight:
+                        st.markdown(f"""
+                        <div class="alert">
+                        ⚠️ Volumetric Weight ({round(volumetric_weight,2)} KG) ఎక్కువగా ఉంది.<br>
+                        కాబట్టి charges volumetric weight ప్రకారం తీసుకుంటారు.
+                        </div>
+                        """, unsafe_allow_html=True)
+
+                    # 📢 CUSTOMER NOTICE
+                    st.markdown("""
+                    <div class="note">
+                    📢 <b>Customer Notice:</b><br><br>
+                    Courier సంబంధిత వివరాల కోసం<br>
+                    📞 <b>Sai గారిని సంప్రదించండి: 8885999794</b><br><br>
+                    👉 Pricing, weight issues, delivery queries—all handled here.
+                    </div>
+                    """, unsafe_allow_html=True)
+
+                    # ==========================================
+                    # 📲 WHATSAPP BUTTON
+                    # ==========================================
+                    phone_number = "918885999794"
+
+                    message = f"""
+Hello Sai Garu,
+
+I checked shipping in Vayu Vega App.
+
+Pincode: {pincode}
+Service: {service}
+Weight: {selected} KG
+Price: ₹{price}
+
+Please assist.
+"""
+
+                    encoded_message = urllib.parse.quote(message)
+                    whatsapp_url = f"https://wa.me/{phone_number}?text={encoded_message}"
+
+                    st.markdown(f"""
+                    <a href="{whatsapp_url}" target="_blank">
+                        <button style="
+                            width:100%;
+                            background:#25D366;
+                            color:white;
+                            padding:15px;
+                            border:none;
+                            border-radius:10px;
+                            font-size:18px;
+                            font-weight:bold;
+                            margin-top:15px;
+                            cursor:pointer;">
+                            📲 Chat on WhatsApp
+                        </button>
+                    </a>
+                    """, unsafe_allow_html=True)
+
                     st.success("Calculated ✅")
 
             else:
                 st.error("Invalid Pincode")
 
 else:
-    st.warning("Upload rates.xlsx")
+    st.warning("⚠️ rates.xlsx file folder lo undali")
