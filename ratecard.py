@@ -3,194 +3,126 @@ import pandas as pd
 import os
 
 # ==========================================
-# 1. PAGE CONFIG
+# CONFIG
 # ==========================================
-st.set_page_config(
-    page_title="Vayu Vega Dashboard",
-    page_icon="🚚",
-    layout="wide"
-)
+st.set_page_config(page_title="Vayu Vega Pro", layout="wide")
 
 # ==========================================
-# 2. MODERN DASHBOARD CSS
+# CSS
 # ==========================================
 st.markdown("""
 <style>
-
-body {
-    background-color: #f5f7fb;
-}
-
-/* Header */
-.header {
-    text-align: center;
-    padding: 10px;
-}
-.header h1 {
-    color: #111;
-    font-weight: 800;
-}
-.header p {
-    color: #777;
-}
-
-/* Card */
-.card {
-    background: white;
-    padding: 20px;
-    border-radius: 15px;
-    box-shadow: 0 6px 18px rgba(0,0,0,0.08);
-    margin-bottom: 20px;
-}
-
-/* Price Card */
-.price-card {
-    background: linear-gradient(135deg, #000000, #2c2c2c);
-    color: white;
-    padding: 30px;
-    border-radius: 20px;
-    text-align: center;
-}
-
-.price {
-    font-size: 60px;
-    font-weight: 900;
-    color: #00e676;
-}
-
-/* Inputs */
-label {
-    font-weight: bold !important;
-    color: black !important;
-}
-
-/* Button */
-.stButton>button {
-    width: 100%;
-    height: 50px;
-    border-radius: 12px;
-    background: #00c853;
-    color: white;
-    font-size: 18px;
-    font-weight: bold;
-}
-
+.card {background:white;padding:20px;border-radius:15px;box-shadow:0 6px 15px rgba(0,0,0,0.08);margin-bottom:20px;}
+.price-card {background:black;color:white;padding:25px;border-radius:15px;text-align:center;}
+.price {font-size:50px;color:#00e676;font-weight:900;}
+.alert {background:#fff3cd;padding:15px;border-radius:10px;color:#856404;margin-top:15px;border:1px solid #ffeeba;}
 </style>
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 3. LOAD DATA
+# LOAD DATA
 # ==========================================
 @st.cache_data
 def load_data():
     if not os.path.exists("rates.xlsx"):
         return None, None
-
     try:
-        s_df = pd.read_excel("rates.xlsx", sheet_name="States")
-        s_df.columns = s_df.columns.str.strip().str.upper()
+        s = pd.read_excel("rates.xlsx", sheet_name="States")
+        s.columns = s.columns.str.strip().str.upper()
 
-        r_df = pd.read_excel("rates.xlsx", sheet_name="Rates", header=2)
-        r_df.columns = r_df.columns.str.strip()
-
-        return s_df, r_df
+        r = pd.read_excel("rates.xlsx", sheet_name="Rates", header=2)
+        r.columns = r.columns.str.strip()
+        return s, r
     except:
         return None, None
 
 state_df, rate_df = load_data()
 
 # ==========================================
-# 4. HEADER
+# HEADER
 # ==========================================
-st.markdown("""
-<div class="header">
-    <h1>🚚 Vayu Vega Dashboard</h1>
-    <p>Fast • Smart • Transparent Pricing</p>
-</div>
-""", unsafe_allow_html=True)
+st.title("🚚 Vayu Vega Smart Calculator")
 
 # ==========================================
-# 5. MAIN GRID
+# MAIN
 # ==========================================
 if state_df is not None and rate_df is not None:
 
-    col1, col2 = st.columns([1,1])
+    c1, c2 = st.columns(2)
 
-    # -------- LEFT PANEL --------
-    with col1:
+    # -------- INPUT --------
+    with c1:
         st.markdown('<div class="card">', unsafe_allow_html=True)
 
-        service = st.selectbox("🚛 Select Network", ["DTDC", "ECOM"])
-        pincode = st.number_input("📍 Enter Pincode", value=0)
+        service = st.selectbox("Courier", ["DTDC", "ECOM"])
+        pincode = st.number_input("Pincode", value=0)
 
-        st.markdown("### 📐 Dimensions (cm)")
-        l, w, h = st.columns(3)
+        st.subheader("📦 Weight")
+        dead_weight = st.number_input("Dead Weight (KG)", value=0.5)
 
-        with l:
-            length = st.number_input("Length", value=0)
-        with w:
-            width = st.number_input("Width", value=0)
-        with h:
-            height = st.number_input("Height", value=0)
+        st.subheader("📐 Dimensions (cm)")
+        l = st.number_input("Length", value=0)
+        w = st.number_input("Width", value=0)
+        h = st.number_input("Height", value=0)
 
         st.markdown('</div>', unsafe_allow_html=True)
 
-    # -------- RIGHT PANEL --------
-    with col2:
-
+    # -------- CALCULATION --------
+    with c2:
         if pincode > 0:
+
             match = state_df[state_df['PINCODE'] == pincode]
 
             if not match.empty:
                 zone = str(match.iloc[0]['ZONE']).upper()
 
-                clean_rates = rate_df.dropna(subset=['Weight'])
-                weights = sorted(clean_rates['Weight'].unique())
+                # 🔥 VOLUMETRIC FORMULA
+                volumetric_weight = (l * w * h) / 5000 if l and w and h else 0
 
-                selected_kg = st.selectbox("⚖️ Select Weight", weights)
+                # 🔥 FINAL CHARGEABLE WEIGHT
+                charge_weight = max(dead_weight, volumetric_weight)
 
-                if st.button("💰 Calculate Price"):
+                st.markdown('<div class="card">', unsafe_allow_html=True)
 
-                    col_name = f"{zone}-{service}"
+                st.write(f"📊 **Dead Weight:** {dead_weight} KG")
+                st.write(f"📊 **Volumetric Weight:** {round(volumetric_weight,2)} KG")
+                st.write(f"✅ **Chargeable Weight:** {round(charge_weight,2)} KG")
 
-                    if col_name in clean_rates.columns:
-                        try:
-                            price = clean_rates.loc[
-                                clean_rates['Weight'] == selected_kg,
-                                col_name
-                            ].values[0]
+                # ⚠️ ALERT
+                if volumetric_weight > dead_weight:
+                    st.markdown(f"""
+                    <div class="alert">
+                    ⚠️ ఈ shipment కి <b>Volumetric Weight ({round(volumetric_weight,2)} KG)</b> ఎక్కువగా ఉంది.<br>
+                    కాబట్టి charges <b>Volumetric Weight</b> ప్రకారం తీసుకుంటారు.
+                    </div>
+                    """, unsafe_allow_html=True)
 
-                            st.markdown(f"""
-                            <div class="price-card">
-                                <p>Shipping Cost</p>
-                                <div class="price">₹{price}</div>
-                                <p>
-                                Zone: {zone} <br>
-                                Service: {service} <br>
-                                Weight: {selected_kg} kg <br>
-                                Size: {length} x {width} x {height}
-                                </p>
-                            </div>
-                            """, unsafe_allow_html=True)
+                st.markdown('</div>', unsafe_allow_html=True)
 
-                            st.success("Price Calculated Successfully ✅")
-                            st.balloons()
+                # RATE CALC
+                clean = rate_df.dropna(subset=['Weight'])
 
-                        except:
-                            st.error("❌ Rate not found")
+                weights = sorted(clean['Weight'].unique())
+                selected = min(weights, key=lambda x: abs(x - charge_weight))
+
+                col = f"{zone}-{service}"
+
+                if col in clean.columns:
+
+                    price = clean.loc[clean['Weight'] == selected, col].values[0]
+
+                    st.markdown(f"""
+                    <div class="price-card">
+                        <p>Final Charge</p>
+                        <div class="price">₹{price}</div>
+                        <p>Weight Used: {selected} KG</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+                    st.success("Calculated ✅")
 
             else:
-                st.error("❌ Invalid Pincode")
+                st.error("Invalid Pincode")
 
 else:
-    st.warning("⚠️ Please keep rates.xlsx file in folder")
-
-# ==========================================
-# FOOTER
-# ==========================================
-st.markdown("""
-<hr>
-<center style='color:gray'>
-Vayu Vega Enterprises • Gudiwada
-</center>
-""", unsafe_allow_html=True)
+    st.warning("Upload rates.xlsx")
