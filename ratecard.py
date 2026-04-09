@@ -4,6 +4,28 @@ import os
 import urllib.parse
 
 # ==========================================
+# 🔒 SECURITY (PASSWORD)
+# ==========================================
+APP_PASSWORD = "vayu@123"
+
+pwd = st.text_input("🔐 Enter Access Password", type="password")
+
+if pwd != APP_PASSWORD:
+    st.warning("🔒 Unauthorized Access")
+    st.stop()
+
+# ==========================================
+# 🔒 HIDE GITHUB ICON
+# ==========================================
+st.markdown("""
+<style>
+a[href*="github"] {
+    display: none !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
+# ==========================================
 # CONFIG
 # ==========================================
 st.set_page_config(page_title="Vayu Vega Pro", layout="wide")
@@ -78,10 +100,10 @@ if state_df is not None and rate_df is not None:
             if not match.empty:
                 zone = str(match.iloc[0]['ZONE']).upper()
 
-                # 🔥 VOLUMETRIC
+                # VOLUMETRIC
                 volumetric_weight = (l * w * h) / 5000 if l and w and h else 0
 
-                # 🔥 FINAL WEIGHT
+                # FINAL WEIGHT
                 charge_weight = max(dead_weight, volumetric_weight)
 
                 st.markdown('<div class="card">', unsafe_allow_html=True)
@@ -106,7 +128,7 @@ if state_df is not None and rate_df is not None:
                         col
                     ].values[0]
 
-                    # 💰 PRICE DISPLAY
+                    # PRICE DISPLAY
                     st.markdown(f"""
                     <div class="price-card">
                         <p>Final Charge</p>
@@ -115,32 +137,25 @@ if state_df is not None and rate_df is not None:
                     </div>
                     """, unsafe_allow_html=True)
 
-                    # ==========================================
-                    # 🔥 NOTIFICATIONS
-                    # ==========================================
-
-                    # ⚠️ Volumetric Alert
+                    # ⚠️ ALERT
                     if volumetric_weight > dead_weight:
                         st.markdown(f"""
                         <div class="alert">
                         ⚠️ Volumetric Weight ({round(volumetric_weight,2)} KG) ఎక్కువగా ఉంది.<br>
-                        కాబట్టి charges volumetric weight ప్రకారం తీసుకుంటారు.
+                        Charges volumetric weight ప్రకారం తీసుకుంటారు.
                         </div>
                         """, unsafe_allow_html=True)
 
-                    # 📢 CUSTOMER NOTICE
+                    # 📢 NOTICE
                     st.markdown("""
                     <div class="note">
-                    📢 <b>Customer Notice:</b><br><br>
-                    Courier సంబంధిత వివరాల కోసం<br>
-                    📞 <b>Sai గారిని సంప్రదించండి: 8885999794</b><br><br>
-                    👉 Pricing, weight issues, delivery queries—all handled here.
+                    📢 <b>Customer Support:</b><br><br>
+                    📞 Sai: 8885999794<br>
+                    👉 Courier related queries కోసం సంప్రదించండి
                     </div>
                     """, unsafe_allow_html=True)
 
-                    # ==========================================
                     # 📲 WHATSAPP BUTTON
-                    # ==========================================
                     phone_number = "918885999794"
 
                     message = f"""
@@ -156,11 +171,11 @@ Price: ₹{price}
 Please assist.
 """
 
-                    encoded_message = urllib.parse.quote(message)
-                    whatsapp_url = f"https://wa.me/{phone_number}?text={encoded_message}"
+                    encoded = urllib.parse.quote(message)
+                    url = f"https://wa.me/{phone_number}?text={encoded}"
 
                     st.markdown(f"""
-                    <a href="{whatsapp_url}" target="_blank">
+                    <a href="{url}" target="_blank">
                         <button style="
                             width:100%;
                             background:#25D366;
@@ -170,8 +185,7 @@ Please assist.
                             border-radius:10px;
                             font-size:18px;
                             font-weight:bold;
-                            margin-top:15px;
-                            cursor:pointer;">
+                            margin-top:15px;">
                             📲 Chat on WhatsApp
                         </button>
                     </a>
